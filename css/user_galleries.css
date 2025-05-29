@@ -1,0 +1,7 @@
+.ajax-progress .throbber {
+  display: none;
+}
+
+.ajax-progress .message {
+  display: none;
+}

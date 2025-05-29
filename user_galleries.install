@@ -1,0 +1,107 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the user_galleries module.
+ */
+
+use Drupal\user\Entity\User;
+use Drupal\user_galleries\Entity\Gallery;
+use Drupal\Core\Field\BaseFieldDefinition;
+
+/**
+* Create default public and private galleries for existing users.
+*/
+function user_galleries_update_10002(&$sandbox) {
+$entity_type_manager = \Drupal::entityTypeManager();
+$user_storage = $entity_type_manager->getStorage('user');
+$gallery_storage = $entity_type_manager->getStorage('gallery');
+
+// Initialize sandbox if it's the first run.
+if (!isset($sandbox['progress'])) {
+$query = $user_storage->getQuery();
+// Get all user IDs except anonymous (UID 0).
+$uids = $query->condition('uid', 0, '>')
+->accessCheck(FALSE) // Important for update hooks.
+->execute();
+$sandbox['uids'] = $uids;
+$sandbox['progress'] = 0;
+$sandbox['max'] = count($uids);
+$sandbox['created_count'] = 0;
+}
+
+// Define how many users to process in each batch.
+$limit = 50; // Adjust based on your site's performance.
+
+// Get the UIDs for the current batch.
+$uids_to_process = array_slice(
+$sandbox['uids'],
+$sandbox['progress'],
+$limit,
+TRUE // Preserve keys (though not strictly needed here)
+);
+
+// Process the batch.
+foreach ($uids_to_process as $uid) {
+/** @var \Drupal\user\UserInterface $user */
+$user = $user_storage->load($uid);
+
+if ($user) {
+$username = $user->getAccountName();
+
+// Check for and create public gallery if missing.
+$public_galleries = $gallery_storage->loadByProperties([
+'uid' => $uid,
+'gallery_type' => 'public',
+]);
+if (empty($public_galleries)) {
+$public_gallery = Gallery::create([
+'title' => t('@username\'s Public Gallery', ['@username' => $username]),
+'uid' => $uid,
+'gallery_type' => 'public',
+]);
+$public_gallery->save();
+$sandbox['created_count']++;
+}
+
+// Check for and create private gallery if missing.
+$private_galleries = $gallery_storage->loadByProperties([
+'uid' => $uid,
+'gallery_type' => 'private',
+]);
+if (empty($private_galleries)) {
+$private_gallery = Gallery::create([
+'title' => t('@username\'s Private Gallery', ['@username' => $username]),
+'uid' => $uid,
+'gallery_type' => 'private',
+]);
+$private_gallery->save();
+$sandbox['created_count']++;
+}
+}
+
+// Update progress.
+$sandbox['progress']++;
+}
+
+// Set #finished based on progress.
+if ($sandbox['progress'] >= $sandbox['max']) {
+$sandbox['#finished'] = 1;
+} else {
+$sandbox['#finished'] = ($sandbox['progress'] / $sandbox['max']);
+}
+
+// Provide a message (optional).
+if ($sandbox['#finished'] == 1) {
+return t('Finished creating galleries for @max users. Created @count new galleries.', [
+'@max' => $sandbox['max'],
+'@count' => $sandbox['created_count']
+]);
+}
+else {
+return t('Processing users @progress of @max...', [
+'@progress' => $sandbox['progress'],
+'@max' => $sandbox['max']
+]);
+}
+}

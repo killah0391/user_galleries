@@ -1,0 +1,17 @@
+user_galleries.manage_public:
+  path: '/user/gallery/manage/public'
+  defaults:
+    _form: '\Drupal\user_galleries\Form\GalleryManagementForm'
+    _title: 'Manage Public Gallery'
+    gallery_type: 'public'
+  requirements:
+    _user_is_logged_in: 'TRUE'
+
+user_galleries.manage_private:
+  path: '/user/gallery/manage/private'
+  defaults:
+    _form: '\Drupal\user_galleries\Form\GalleryManagementForm'
+    _title: 'Manage Private Gallery'
+    gallery_type: 'private'
+  requirements:
+    _user_is_logged_in: 'TRUE'

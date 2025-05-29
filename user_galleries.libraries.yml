@@ -1,0 +1,22 @@
+global-styling:
+  version: 1.x
+  # js:
+  #   js/user_galleries.js: {}
+  # dependencies:
+  #   - core/jquery
+  #   - core/drupal
+  #   - core/drupalSettings # We need this to pass settings
+  #   # - happydate/bootstrap-icons
+  css:
+    theme:
+      css/user_galleries.css: {}
+      # ../../../themes/custom/happydate/node_modules/bootstrap-icons/font/bootstrap-icons.css: {}
+gallery-management-js:
+  version: 1.x
+  js:
+    js/user_galleries.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/once
+    - core/drupalSettings

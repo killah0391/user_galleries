@@ -1,0 +1,10 @@
+name: User Galleries
+type: module
+description: 'Provides private and public galleries for users.'
+core_version_requirement: ^10
+package: Custom
+dependencies:
+  - drupal:file
+  - drupal:image
+  - drupal:user
+  # - custom_bootstrap_toasts:custom_bootstrap_toasts

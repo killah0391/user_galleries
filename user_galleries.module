@@ -1,0 +1,26 @@
+<?php
+
+use Drupal\user\UserInterface;
+use Drupal\user_galleries\Entity\Gallery;
+
+/**
+ * Implements hook_user_insert().
+ */
+function user_galleries_user_insert(UserInterface $account)
+{
+  // Create a public gallery.
+  $public_gallery = Gallery::create([
+    'title' => t('@username\'s Public Gallery', ['@username' => $account->getAccountName()]),
+    'uid' => $account->id(),
+    'gallery_type' => 'public',
+  ]);
+  $public_gallery->save();
+
+  // Create a private gallery.
+  $private_gallery = Gallery::create([
+    'title' => t('@username\'s Private Gallery', ['@username' => $account->getAccountName()]),
+    'uid' => $account->id(),
+    'gallery_type' => 'private',
+  ]);
+  $private_gallery->save();
+}
