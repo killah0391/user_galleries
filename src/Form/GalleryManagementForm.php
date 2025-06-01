@@ -14,7 +14,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\match_toasts\Ajax\ShowBootstrapToastsCommand;
+use Drupal\match_toasts\Ajax\ShowBootstrapToastsCommand; // Assuming this is used by your ajaxRefreshFormCallback
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -54,7 +54,7 @@ class GalleryManagementForm extends FormBase
 
   public function buildForm(array $form, FormStateInterface $form_state, $gallery_type = NULL, UserInterface $user = NULL)
   {
-    $logger = \Drupal::logger('user_galleries');
+    $logger = \Drupal::logger('user_galleries'); // Standard logger for this form
     $target_user = $user ?: User::load($this->currentUser->id());
 
     if (!$target_user) {
@@ -131,7 +131,7 @@ class GalleryManagementForm extends FormBase
       $form['existing_images_wrapper']['profile_picture_selection_clear'] = [
         '#type' => 'radio',
         '#title' => $this->t('None (Clear Profile Picture)'),
-        '#name' => 'profile_picture_selection', // Shared name for the radio group
+        '#name' => 'profile_picture_selection',
         '#return_value' => 'clear',
         '#default_value' => !$current_profile_picture_fid ? 'clear' : NULL,
         '#attributes' => ['id' => 'profile-pic-option-clear'],
@@ -159,35 +159,30 @@ class GalleryManagementForm extends FormBase
             '#theme' => 'image_style',
             '#style_name' => 'thumbnail',
             '#uri' => $file->getFileUri(),
-            '#width' => 100, // Optional: for layout consistency
-            '#height' => 100, // Optional: for layout consistency
+            '#width' => 100,
+            '#height' => 100,
           ];
           $row['filename'] = ['#markup' => $file->getFilename()];
           $row['actions']['delete_icon'] = [
             '#type' => 'markup',
             '#markup' => '<a href="#" role="button" class="gallery-delete-icon-trigger" data-fid="' . $fid . '" title="' . $this->t('Delete this image') . '"><i class="bi bi-trash text-danger"></i></a>',
-            '#weight' => -10, // To appear before other actions if any
-            '#allowed_tags' => ['a', 'i'], // Drupal best practice for markup
+            '#weight' => -10,
+            '#allowed_tags' => ['a', 'i'],
           ];
-
-          // Hidden Submit Button (for the actual AJAX action)
-          // We use a unique name for FAPI element key, but the #name property is what matters for submission.
           $row['actions']['delete_submit_fid_' . $fid] = [
             '#type' => 'submit',
-            '#name' => 'delete_image_' . $fid, // This name MUST match what deleteImageSubmit expects
-            '#value' => $this->t('Confirm Delete for FID @fid', ['@fid' => $fid]), // For non-JS fallback or accessibility
-            '#submit' => ['::deleteImageSubmit'], // Your existing submit handler
+            '#name' => 'delete_image_' . $fid,
+            '#value' => $this->t('Confirm Delete for FID @fid', ['@fid' => $fid]),
+            '#submit' => ['::deleteImageSubmit'],
             '#ajax' => [
-              'callback' => '::ajaxRefreshFormCallback', // Your existing AJAX callback
+              'callback' => '::ajaxRefreshFormCallback',
               'wrapper' => 'form-container-gallery',
             ],
             '#limit_validation_errors' => [],
             '#attributes' => [
-              // 'visually-hidden' is a Drupal core class to hide elements accessibly.
-              // Add a specific class to target this button with JavaScript.
               'class' => ['gallery-action-delete-submit', 'gallery-action-delete-submit-fid-' . $fid, 'visually-hidden'],
             ],
-            '#weight' => -5, // Place it after the icon markup if needed, but it's hidden.
+            '#weight' => -5,
           ];
 
           if ($gallery_type === 'public' && $target_user->hasField('user_picture')) {
@@ -195,9 +190,9 @@ class GalleryManagementForm extends FormBase
             $row['set_picture'] = [
               '#type' => 'radio',
               '#title' => $this->t('Use this image'),
-              '#title_display' => 'invisible', // Keep label for accessibility, but hide it
-              '#name' => 'profile_picture_selection', // Shared name for the radio group
-              '#return_value' => (string)$fid, // Ensure return value is string if FIDs are numeric
+              '#title_display' => 'invisible',
+              '#name' => 'profile_picture_selection',
+              '#return_value' => (string)$fid,
               '#default_value' => $default_value_for_radio ? (string)$default_value_for_radio : NULL,
               '#attributes' => ['class' => ['profile-pic-radio']],
             ];
@@ -209,12 +204,30 @@ class GalleryManagementForm extends FormBase
     }
 
     $form['upload_images'] = ['#type' => 'managed_file', '#title' => $this->t('Upload New Images'), '#upload_location' => ($gallery_type === 'private') ? 'private://galleries/' . $target_user->id() : 'public://galleries/' . $target_user->id(), '#multiple' => TRUE, '#upload_validators' => ['file_validate_extensions' => ['png jpg jpeg gif']], '#description' => $this->t('Allowed extensions: png, jpg, jpeg, gif. Click "Save Gallery Changes" after selecting files.')];
+
     if ($gallery_type === 'private') {
-      $form['allowed_users'] = ['#type' => 'entity_autocomplete', '#title' => $this->t('Grant Access To'), '#description' => $this->t('Users who can view this private gallery (besides you).'), '#target_type' => 'user', '#tags' => TRUE, '#default_value' => $gallery->get('allowed_users')->referencedEntities(), '#selection_settings' => ['include_anonymous' => FALSE]];
+      $form['allowed_users'] = [
+        '#type' => 'entity_autocomplete',
+        '#title' => $this->t('Grant Access To'),
+        '#description' => $this->t('Users who can view this private gallery (besides you).'),
+        '#target_type' => 'user',
+        '#tags' => TRUE,
+        '#default_value' => $gallery->get('allowed_users')->referencedEntities(),
+        '#selection_settings' => ['include_anonymous' => FALSE]
+      ];
+      // Logging added in the previous response to confirm field addition
+      if (isset($form['allowed_users'])) {
+        $logger->debug('BuildForm - form[allowed_users] successfully added to form structure for private gallery. Type: @type, Tags: @tags', [
+          '@type' => $form['allowed_users']['#type'],
+          '@tags' => !empty($form['allowed_users']['#tags']) ? 'TRUE' : 'FALSE',
+        ]);
+      } else {
+        $logger->warning('BuildForm - form[allowed_users] was NOT added to form structure for private gallery ID @gid, even though gallery type is private.', ['@gid' => $gallery->id()]);
+      }
     }
 
     $form['#attached']['library'][] = 'user_galleries/global-styling';
-    $form['#attached']['library'][] = 'match_toasts/global-handler'; // For bootstrap toasts
+    $form['#attached']['library'][] = 'match_toasts/global-handler';
     $form['#attached']['library'][] = 'user_galleries/gallery-management-js';
     $form['actions'] = ['#type' => 'actions'];
     $form['actions']['submit'] = ['#type' => 'submit', '#value' => $this->t('Save Gallery Changes'), '#ajax' => ['callback' => '::ajaxRefreshFormCallback', 'wrapper' => 'form-container-gallery']];
@@ -271,7 +284,10 @@ class GalleryManagementForm extends FormBase
                 break;
             }
           }
-          $response->addCommand(new ShowBootstrapToastsCommand($message_text, $title, $type));
+          // Ensure ShowBootstrapToastsCommand is available if you use it
+          if (class_exists('\Drupal\match_toasts\Ajax\ShowBootstrapToastsCommand')) {
+            $response->addCommand(new ShowBootstrapToastsCommand($message_text, $title, $type));
+          }
         }
       }
       $messenger->deleteAll();
@@ -299,7 +315,7 @@ class GalleryManagementForm extends FormBase
         $gallery_type = $form_state->get('gallery_type');
         $logger->info('deleteImageSubmit: Target User ID: @target_uid, Gallery Type: @gallery_type', ['@target_uid' => $target_user_id, '@gallery_type' => $gallery_type]);
 
-        if ($target_user_id && $gallery_type === 'public') { // Only check profile pic for public gallery context
+        if ($target_user_id && $gallery_type === 'public') {
           $user_entity = User::load($target_user_id);
           if ($user_entity && $user_entity->hasField('user_picture')) {
             $current_profile_picture_target_id = $user_entity->get('user_picture')->target_id;
@@ -310,17 +326,8 @@ class GalleryManagementForm extends FormBase
               $user_entity->get('user_picture')->setValue([]);
               $user_entity->save();
               $this->messenger()->addStatus($this->t('Your profile picture has been removed because the image was deleted from your gallery.'));
-
-              // Ensure the "None (Clear Profile Picture)" radio is selected in the rebuilt form
-              if (isset($form['existing_images_wrapper']['profile_picture_selection_clear'])) {
-                // This change to $form won't persist to the rebuilt form directly unless $form_state->setRebuild is used
-                // and the form builder re-evaluates default_values.
-                // More robustly, the default_value logic in buildForm will handle this.
-                // For immediate effect in *this* AJAX refresh, this might be needed if not relying on full rebuild.
-                // However, the current AJAX callback replaces the whole form, so buildForm's defaults will apply.
-                $form_state->set('profile_picture_cleared_due_to_delete', TRUE); // Flag for buildForm if needed, or rely on current_pic_fid being null
-                $logger->info('deleteImageSubmit: Flagged that profile picture was cleared due to delete.');
-              }
+              $form_state->set('profile_picture_cleared_due_to_delete', TRUE);
+              $logger->info('deleteImageSubmit: Flagged that profile picture was cleared due to delete.');
             }
           } else {
             $logger->warning('deleteImageSubmit: User @uid not loaded or has no user_picture field for profile pic check.', ['@uid' => $target_user_id]);
@@ -362,14 +369,29 @@ class GalleryManagementForm extends FormBase
     parent::validateForm($form, $form_state);
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function submitForm(array &$form, FormStateInterface $form_state)
   {
-    $logger = \Drupal::logger('user_galleries');
+    $logger = \Drupal::logger('user_galleries_form_submit');
+
+    // --- DETAILED INPUT LOGGING (as per previous response) ---
+    $all_form_values = $form_state->getValues();
+    $logger->debug('SubmitForm - START - All values from $form_state->getValues(): <pre>@values</pre>', ['@values' => var_export($all_form_values, TRUE)]);
+
+    $user_input = $form_state->getUserInput();
+    $logger->debug('SubmitForm - START - Raw user input from $form_state->getUserInput(): <pre>@input</pre>', ['@input' => var_export($user_input, TRUE)]);
+
+    $allowed_users_explicit_get_value = $form_state->getValue('allowed_users');
+    $logger->debug('SubmitForm - START - Value from $form_state->getValue("allowed_users"): @value', ['@value' => var_export($allowed_users_explicit_get_value, TRUE)]);
+    // --- END OF DETAILED INPUT LOGGING ---
+
     $triggering_element = $form_state->getTriggeringElement();
     $button_name = $triggering_element['#name'] ?? 'N/A';
 
     if ($triggering_element && $triggering_element['#type'] === 'submit' && strpos($button_name, 'delete_image_') === 0) {
-      $logger->info('submitForm: Delete button (@name) triggered, main submit logic skipped as it is handled by deleteImageSubmit.', ['@name' => $button_name]);
+      $logger->info('SubmitForm: Delete button (@name) triggered. Main submit logic for other fields skipped.', ['@name' => $button_name]);
       return;
     }
 
@@ -379,98 +401,108 @@ class GalleryManagementForm extends FormBase
     $gallery_type = $form_state->get('gallery_type');
     $changes_made = FALSE;
 
-    $logger->info('submitForm: Processing main submit. Target User ID: @target_uid, Gallery Type: @gallery_type', ['@target_uid' => $target_user_id, '@gallery_type' => $gallery_type]);
+    $logger->info('SubmitForm: Processing main submit. Gallery ID: @gid, Target User ID: @target_uid, Gallery Type: @gallery_type', [
+      '@gid' => $gallery->id(),
+      '@target_uid' => $target_user_id,
+      '@gallery_type' => $gallery_type
+    ]);
 
-    // Log different ways of getting values for debugging this specific issue
-    $values_from_getValues = $form_state->getValues();
-    $logger->debug('submitForm: Full $form_state->getValues() output: @values', ['@values' => print_r($values_from_getValues, TRUE)]);
-
-    $value_from_getValue = $form_state->getValue('profile_picture_selection');
-    $logger->debug('submitForm: $form_state->getValue("profile_picture_selection") output: @value', ['@value' => $value_from_getValue ?? 'NULL']);
-
-    $userInput = $form_state->getUserInput();
-    $logger->debug('submitForm: Full $form_state->getUserInput() output: @input', ['@input' => print_r($userInput, TRUE)]);
-
-    // --- Determine selected profile picture ---
+    // --- Profile Picture Logic (copied from your existing form for consistency) ---
+    $userInputForProfilePic = $user_input; // Use $user_input already fetched.
     $selected_pic_value = null;
-
-    // Priority 1: Check raw user input, as we've seen 'profile_picture_selection' in the payload
-    if (isset($userInput['profile_picture_selection']) && $userInput['profile_picture_selection'] !== '') {
-      $selected_pic_value = (string)$userInput['profile_picture_selection']; // Ensure string for comparison
-      $logger->info('submitForm: Profile picture selection is "@value" (derived from $form_state->getUserInput()).', ['@value' => $selected_pic_value]);
+    if (isset($userInputForProfilePic['profile_picture_selection']) && $userInputForProfilePic['profile_picture_selection'] !== '') {
+      $selected_pic_value = (string)$userInputForProfilePic['profile_picture_selection'];
+      $logger->info('SubmitForm: Profile picture selection from user input: @selection', ['@selection' => $selected_pic_value]);
     } else {
-      // This case means 'profile_picture_selection' was not found directly in user input.
-      // This would be surprising given the payload you've shown.
-      // It might happen if *no* radio in the group was selected by the user AND no default was posted.
-      $logger->warning('submitForm: "profile_picture_selection" was NOT found as a key in $form_state->getUserInput() or it was empty. This is unexpected if a radio was selected.');
-      // As a deep fallback for diagnostic purposes, let's see if the previous $values parsing yields anything
-      if (isset($values_from_getValues['profile_picture_selection_clear']) && $values_from_getValues['profile_picture_selection_clear'] === 'clear') {
-        $selected_pic_value = 'clear';
-        $logger->info('submitForm: Deep Fallback: Profile picture selection is "clear" (from $values_from_getValues[\'profile_picture_selection_clear\']).');
-      } elseif (isset($values_from_getValues['existing_images_table']) && is_array($values_from_getValues['existing_images_table'])) {
-        foreach ($values_from_getValues['existing_images_table'] as $fid_in_table => $row_values) {
-          if (isset($row_values['set_picture']) && !empty($row_values['set_picture']) && is_numeric($row_values['set_picture'])) {
-            $selected_pic_value = (string)$row_values['set_picture'];
-            $logger->info('submitForm: Deep Fallback: Profile picture selection is FID @fid (from $values_from_getValues path for table).', ['@fid' => $selected_pic_value]);
-            break;
-          }
-        }
-      }
+      $logger->info('SubmitForm: No profile picture selection found in user input.');
     }
-    // --- End of determining selected profile picture ---
 
-    // Handle profile picture update if public gallery and a selection was determined
-    if ($gallery_type === 'public') {
-      if ($selected_pic_value !== null) {
-        $logger->info('submitForm: Attempting to update profile picture with determined selection: @selection', ['@selection' => $selected_pic_value]);
-        $user = User::load($target_user_id);
+    if ($gallery_type === 'public' && $selected_pic_value !== null) {
+      $user = User::load($target_user_id);
+      if ($user && $user->hasField('user_picture')) {
+        $current_pic_fid_obj = $user->get('user_picture')->first();
+        $current_pic_fid = $current_pic_fid_obj ? (string)$current_pic_fid_obj->get('target_id')->getValue() : NULL;
+        $logger->info('SubmitForm: Current profile FID for user @uid: @current_fid. Selected for update: @selected_pic_value', ['@uid' => $target_user_id, '@current_fid' => $current_pic_fid ?: 'None', '@selected_pic_value' => $selected_pic_value]);
 
-        if ($user && $user->hasField('user_picture')) {
-          $logger->info('submitForm: User @uid loaded and has user_picture field for update.', ['@uid' => $target_user_id]);
-          $current_pic_fid_obj = $user->get('user_picture')->first();
-          // Important: Ensure $current_pic_fid is also a string for comparison, or consistently handle types.
-          $current_pic_fid = $current_pic_fid_obj ? (string)$current_pic_fid_obj->get('target_id')->getValue() : NULL;
-
-          $logger->info('submitForm: Current profile FID for user @uid before update: @current_fid', ['@uid' => $target_user_id, '@current_fid' => $current_pic_fid ?: 'None']);
-
-          if ($selected_pic_value === 'clear') {
-            if ($current_pic_fid !== NULL) {
-              $logger->info('submitForm: Clearing profile picture for user @uid.', ['@uid' => $target_user_id]);
-              $user->get('user_picture')->setValue([]);
-              $user->save();
-              $this->messenger()->addStatus($this->t('Profile picture removed.'));
-              $changes_made = TRUE;
-              $logger->info('submitForm: User @uid saved after clearing profile picture.', ['@uid' => $target_user_id]);
-            } else {
-              $logger->info('submitForm: Profile picture already clear for user @uid. No change made by "clear" selection.', ['@uid' => $target_user_id]);
-            }
-          } elseif (is_numeric($selected_pic_value) && $selected_pic_value != $current_pic_fid) {
-            $logger->info('submitForm: Setting profile picture for user @uid to FID @new_fid.', ['@uid' => $target_user_id, '@new_fid' => $selected_pic_value]);
-            $user->get('user_picture')->setValue(['target_id' => $selected_pic_value]);
+        if ($selected_pic_value === 'clear') {
+          if ($current_pic_fid !== NULL) {
+            $user->get('user_picture')->setValue([]);
             $user->save();
-            $this->messenger()->addStatus($this->t('Profile picture updated successfully.'));
-            $changes_made = TRUE;
-            $logger->info('submitForm: User @uid saved after updating profile picture to FID @new_fid.', ['@uid' => $target_user_id, '@new_fid' => $selected_pic_value]);
-          } elseif (is_numeric($selected_pic_value) && $selected_pic_value == $current_pic_fid) {
-            $logger->info('submitForm: Selected profile picture FID @fid is already the current one for user @uid. No change made by this selection.', ['@fid' => $selected_pic_value, '@uid' => $target_user_id]);
-          } else {
-            // This might catch cases where $selected_pic_value is numeric but not 'clear' and doesn't fit other conditions.
-            $logger->warning('submitForm: Invalid or unhandled numeric value for profile_picture_selection: "@value". Current FID: "@current_fid"', ['@value' => $selected_pic_value, '@current_fid' => $current_pic_fid ?: 'None']);
+            $this->messenger()->addStatus($this->t('Profile picture removed.'));
+            // $changes_made = TRUE; // This change is to User entity, not Gallery entity directly.
           }
-        } else {
-          $logger->error('submitForm: User @uid not loaded or does not have user_picture field for update.', ['@uid' => $target_user_id]);
+        } elseif (is_numeric($selected_pic_value) && $selected_pic_value != $current_pic_fid) {
+          $user->get('user_picture')->setValue(['target_id' => $selected_pic_value]);
+          $user->save();
+          $this->messenger()->addStatus($this->t('Profile picture updated successfully.'));
+          // $changes_made = TRUE; // User entity change.
         }
       } else {
-        $logger->info('submitForm: No new profile picture selection was made or determined (selected_pic_value is NULL). No profile picture change attempted.');
+        $logger->warning('SubmitForm: User @uid or user_picture field not found for profile pic update.', ['@uid' => $target_user_id]);
       }
-    } else {
-      $logger->info('submitForm: Gallery type is not public, skipping profile picture update logic.');
     }
+    // --- End of Profile Picture Logic ---
 
-    // Handle new image uploads.
+
+    // --- Handle 'allowed_users' for private gallery (with fix for NULL/empty string) ---
+    if ($gallery->get('gallery_type')->value === 'private') {
+      // $allowed_users_form_value was already retrieved and logged at the start of submitForm via $allowed_users_explicit_get_value
+      $allowed_users_form_value = $allowed_users_explicit_get_value;
+
+      // Get the raw user input again specifically for 'allowed_users' if needed for normalization logic
+      $raw_allowed_users_input = $user_input['allowed_users'] ?? NULL;
+      $logger->debug('Allowed Users - Raw input from $form_state->getUserInput()["allowed_users"] for normalization check: @raw_input', ['@raw_input' => var_export($raw_allowed_users_input, TRUE)]);
+
+
+      if ($allowed_users_form_value === NULL && is_string($raw_allowed_users_input) && trim($raw_allowed_users_input) === '') {
+        $logger->info('Allowed Users - Normalizing NULL from getValue() to an empty array because raw input for "allowed_users" was an empty string.');
+        $allowed_users_form_value = [];
+      }
+
+      if ($allowed_users_form_value !== NULL) {
+        $current_allowed_users_entity_values = $gallery->get('allowed_users')->getValue();
+        $logger->debug('Allowed Users - Current entity values (raw): <pre>@values</pre>', ['@values' => var_export($current_allowed_users_entity_values, TRUE)]);
+
+        $current_allowed_ids = array_map(function ($ref) {
+          return (string)$ref['target_id'];
+        }, $current_allowed_users_entity_values);
+        sort($current_allowed_ids, SORT_STRING);
+        $logger->debug('Allowed Users - Current sorted IDs from entity: [@ids_str]', ['@ids_str' => json_encode($current_allowed_ids)]);
+
+        $new_allowed_ids = array_map(function ($ref) {
+          if (isset($ref['target_id'])) {
+            return (string)$ref['target_id'];
+          }
+          return NULL;
+        }, (array)$allowed_users_form_value);
+        $new_allowed_ids = array_filter($new_allowed_ids);
+        sort($new_allowed_ids, SORT_STRING);
+        $logger->debug('Allowed Users - New sorted IDs from form submission (after potential normalization): [@ids_str]', ['@ids_str' => json_encode($new_allowed_ids)]);
+
+        $are_lists_different = ($current_allowed_ids != $new_allowed_ids);
+        $logger->debug('Allowed Users - Comparing current IDs to new IDs. Different? @result', [
+          '@result' => $are_lists_different ? 'YES' : 'NO',
+        ]);
+
+        if ($are_lists_different) {
+          $gallery->set('allowed_users', $allowed_users_form_value);
+          $changes_made = TRUE;
+          $this->messenger()->addStatus($this->t('Access list updated.'));
+          $logger->info('Allowed Users - Change detected. List set for gallery ID @gallery_id.', ['@gallery_id' => $gallery->id()]);
+        } else {
+          $logger->info('Allowed Users - Lists are identical. No change to allowed_users for gallery ID @gallery_id.', ['@gallery_id' => $gallery->id()]);
+        }
+      } else {
+        $logger->warning('Allowed Users - Processed $allowed_users_form_value is still NULL for private gallery ID @gallery_id. No update will be attempted for this field.', ['@gallery_id' => $gallery->id()]);
+      }
+    }
+    // --- End of 'allowed_users' handling ---
+
+
+    // --- Handle new image uploads ---
     $fids_uploaded = $form_state->getValue('upload_images');
     if (!empty($fids_uploaded) && is_array($fids_uploaded)) {
-      $logger->info('submitForm: Found @count FIDs to upload from upload_images.', ['@count' => count($fids_uploaded)]);
+      $logger->info('SubmitForm: Found @count FIDs to upload from upload_images.', ['@count' => count($fids_uploaded)]);
       $image_field = $gallery->get('images');
       $new_count = 0;
       foreach ($fids_uploaded as $fid) {
@@ -480,51 +512,51 @@ class GalleryManagementForm extends FormBase
           $image_field->appendItem($file);
           $changes_made = TRUE;
           $new_count++;
-          // $logger->info('submitForm: Added FID @fid to gallery.', ['@fid' => $fid]); // Can be noisy
         } else {
-          $logger->warning('submitForm: Could not load file for FID @fid during upload.', ['@fid' => $fid]);
+          $logger->warning('SubmitForm: Could not load file for FID @fid during upload.', ['@fid' => $fid]);
         }
       }
       if ($new_count > 0) {
         $this->messenger()->addStatus($this->t('Added @count new images.', ['@count' => $new_count]));
       }
     }
-
-    // Handle allowed users for private gallery.
-    if ($gallery->get('gallery_type')->value === 'private') {
-      $allowed_users_value = $form_state->getValue('allowed_users');
-      if ($allowed_users_value !== NULL) {
-        $current_allowed_users_refs = $gallery->get('allowed_users')->getValue();
-        $current_allowed_ids = array_map(function ($ref) {
-          return $ref['target_id'];
-        }, $current_allowed_users_refs);
-
-        $new_allowed_user_values = $allowed_users_value;
-        $new_allowed_ids = array_map(function ($ref) {
-          return $ref['target_id'];
-        }, $new_allowed_user_values);
-        sort($current_allowed_ids);
-        sort($new_allowed_ids);
-
-        if ($current_allowed_ids != $new_allowed_ids) {
-          $gallery->set('allowed_users', $new_allowed_user_values);
-          $changes_made = TRUE;
-          $this->messenger()->addStatus($this->t('Access list updated.'));
-          $logger->info('submitForm: Allowed users list updated for private gallery ID @gallery_id.', ['@gallery_id' => $gallery->id()]);
-        }
-      }
-    }
+    // --- End of new image uploads ---
 
     if ($changes_made) {
       $gallery->save();
-      $logger->info('submitForm: Gallery ID @gallery_id saved due to changes.', ['@gallery_id' => $gallery->id()]);
+      $logger->info('Gallery ID @gallery_id SAVED because changes_made flag was true.', ['@gallery_id' => $gallery->id()]);
+      // Optional: $this->galleryStorage->resetCache([$gallery->id()]);
+    } else {
+      $all_messages = $this->messenger()->all();
+      if (empty($all_messages)) {
+        // Only add this generic message if no other specific message (like profile update) was added.
+        $this->messenger()->addMessage($this->t('No changes were made to the gallery content itself.'));
+      }
+      $logger->info('Gallery ID @gallery_id NOT saved for gallery-specific fields because changes_made flag was false.', ['@gallery_id' => $gallery->id()]);
     }
 
     $form_state->setValue('upload_images', []);
-    $input_for_rebuild = $form_state->getUserInput(); // Use a different var name to avoid confusion with $userInput for selection
-    if (isset($input_for_rebuild['upload_images'])) unset($input_for_rebuild['upload_images']);
-    if (isset($input_for_rebuild['upload_images_upload_button'])) unset($input_for_rebuild['upload_images_upload_button']);
+    $input_for_rebuild = $form_state->getUserInput();
+    if (isset($input_for_rebuild['upload_images'])) {
+      unset($input_for_rebuild['upload_images']);
+    }
+    if (isset($input_for_rebuild['upload_images_upload_button'])) {
+      unset($input_for_rebuild['upload_images_upload_button']);
+    }
     $form_state->setUserInput($input_for_rebuild);
     $form_state->setRebuild(TRUE);
+  }
+
+  /**
+   * Route title callback.
+   */
+  public static function getTitle(UserInterface $user, $gallery_type)
+  {
+    // Make sure to inject the Translation service if using $this->t() in a static method,
+    // or use global \Drupal::translation()->translate() or simply t().
+    return t('Manage @username\'s @type Gallery (Admin)', [
+      '@username' => $user->getDisplayName(),
+      '@type' => ucfirst($gallery_type),
+    ]);
   }
 }

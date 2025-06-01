@@ -15,3 +15,55 @@ user_galleries.manage_private:
     gallery_type: 'private'
   requirements:
     _user_is_logged_in: 'TRUE'
+
+# New Admin Routes
+entity.gallery.collection:
+  path: '/admin/structure/user_galleries'
+  defaults:
+    _entity_list: 'gallery' # Tells Drupal to use the list_builder for 'gallery' entity type
+    _title: 'User Galleries'
+  requirements:
+    _permission: 'administer user galleries'
+
+# This is the route used by the ListBuilder's "Edit" operation.
+user_galleries.admin_manage_gallery:
+  path: '/admin/structure/user_galleries/manage/{user}/{gallery_type}'
+  defaults:
+    _form: '\Drupal\user_galleries\Form\GalleryManagementForm'
+    _title_callback: '\Drupal\user_galleries\Form\GalleryManagementForm::getTitle'
+  requirements:
+    _permission: 'administer user galleries'
+    user: \d+
+    gallery_type: 'public|private'
+  options:
+    parameters:
+      user:
+        type: entity:user
+
+# New route for the generic admin edit-form link template (points to the redirect controller)
+entity.gallery.edit_form: # Route name should match convention for entity links
+  path: '/admin/structure/user_galleries/gallery/{gallery}/edit'
+  defaults:
+    _controller: '\Drupal\user_galleries\Controller\GalleryController::adminEditRedirect'
+    _title_callback: '\Drupal\user_galleries\Controller\GalleryController::adminEditRedirectTitle'
+  requirements:
+    _permission: 'administer user galleries' # Or a more specific edit permission
+    gallery: \d+
+  options:
+    parameters:
+      gallery:
+        type: entity:gallery
+
+# Delete form route (ensure name matches what getDefaultOperations for delete expects if using $entity->toUrl('delete-form'))
+entity.gallery.delete_form:
+  path: '/admin/structure/user_galleries/gallery/{gallery}/delete'
+  defaults:
+    _entity_form: 'gallery.delete'
+    _title: 'Delete Gallery'
+  requirements:
+    _permission: 'administer user galleries'
+    gallery: \d+
+  options:
+    parameters:
+      gallery:
+        type: entity:gallery

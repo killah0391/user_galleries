@@ -1,0 +1,12 @@
+view any private gallery:
+  title: 'View any private galleries'
+  description: 'Can view any private galleries and bypass access.'
+  restrict access: TRUE
+manage user galleries:
+  title: 'Manage user galleries'
+  description: 'Can manage any user galleries'
+  restrict access: TRUE
+administer user galleries:
+  title: 'Administer any user galleries'
+  description: 'Allows access to the gallery administration list and the ability to edit or delete any gallery via admin paths.'
+  restrict access: true # Typically true for admin permissions

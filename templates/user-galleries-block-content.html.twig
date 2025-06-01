@@ -1,0 +1,48 @@
+{# File: user_galleries/templates/user-galleries-block-content.html.twig #}
+{% if attributes %}
+	<div{{attributes}}>
+		{# Use attributes passed from PHP for the main wrapper #}
+	{% endif %}
+
+	{% if title_text or manage_icon_link %}
+		<div class="block-header-horizontal-list d-flex justify-content-between align-items-center mb-2">
+			{% if title_text %}
+				<h2 class="block-title mb-0 h3">{{ title_text }}</h2>
+			{% endif %}
+			{% if manage_icon_link %}
+				<span class="gallery-manage-icon-link-wrapper">{{ manage_icon_link }}</span>
+			{% endif %}
+		</div>
+	{% endif %}
+
+	{% if has_images and images and images is iterable and images|length > 0 %}
+		{% set gallery_id = 'horizontalGallery-' ~ random() %}
+		<div class="gallery-scroll-container-wrapper position-relative" id="{{ gallery_id }}-wrapper">
+			<div class="gallery-horizontal-list-scrollable border rounded p-2" id="{{ gallery_id }}" tabindex="0" role="region">
+				<div class="d-flex gallery-items-container">
+					{% for image in images %}
+						<div class="gallery-list-item" id="galleryItem-{{ gallery_id }}-{{ loop.index0 }}">
+							<img src="{{ image.list_src }}" alt="{{ image.alt }}" title="{{ image.title_attr }}" class="img-fluid rounded shadow-sm" data-original-src="{{ image.original_src }}">
+						</div>
+					{% endfor %}
+				</div>
+			</div>
+			{% if images|length > 1 %}
+				<div class="gallery-indicators text-center mt-2" role="tablist" aria-label="{{ 'Image navigation dots'|t }}">
+					{% for key, image in images %}
+						<button type="button" class="gallery-indicator-dot {{ loop.first ? 'active' : '' }}" data-gallery-target="#{{ gallery_id }}" data-slide-to-item-id="galleryItem-{{ gallery_id }}-{{ key }}" role="tab" aria-selected="{{ loop.first ? 'true' : 'false' }}" aria-controls="galleryItem-{{ gallery_id }}-{{ key }}" title="{{ 'Go to image ' ~ (loop.index) }}">
+							<span class="visually-hidden">{{ 'Image ' ~ (loop.index) }}</span>
+						</button>
+					{% endfor %}
+				</div>
+			{% endif %}
+		</div>
+	{% elseif message %}
+		<div class="gallery-message-wrapper alert alert-secondary">
+			{{ message }}
+		</div>
+	{% endif %}
+
+	{% if attributes %}
+	</div>
+{% endif %}

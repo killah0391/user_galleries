@@ -1,7 +1,164 @@
+/* Original styles from user_galleries.css */
 .ajax-progress .throbber {
   display: none;
 }
 
 .ajax-progress .message {
   display: none;
+}
+
+.block-title-with-icon-manage-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1em;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.5em;
+}
+
+.block-title-with-icon-manage-link .block-title {
+  margin-bottom: 0;
+  font-size: 1.5em;
+}
+
+.gallery-manage-icon-link {
+  text-decoration: none;
+  line-height: 1;
+}
+
+.gallery-manage-icon-link i.bi-gear-fill {
+  font-size: .75em;
+  color: #6c757d;
+}
+
+.gallery-manage-icon-link:hover i.bi-gear-fill,
+.gallery-manage-icon-link:focus i.bi-gear-fill {
+  color: #212529;
+}
+
+/* --- Gallery List Styles for "Show First Row" & Expand/Collapse --- */
+.gallery-horizontal-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  height: 110px;
+  /* Example: Adjust to fit one row + margins + padding */
+  overflow: hidden;
+  padding: 10px;
+  /* Increased padding-bottom to make space for the overlaid toggle area */
+  padding-bottom: 50px;
+  /* e.g., if toggle area is 40px high + 10px space */
+  list-style: none;
+  margin: 0;
+  width: 100%;
+  position: relative;
+  /* Crucial for positioning the toggle area inside */
+  transition: height 0.35s ease-in-out;
+}
+
+.gallery-horizontal-list.is-expanded {
+  height: auto;
+  overflow: visible;
+}
+
+/* --- Styles for Individual Gallery Images --- */
+.gallery-image {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  margin: 5px;
+  cursor: pointer;
+  z-index: 1;
+  transition: transform 0.4s ease, z-index 0s 0.4s;
+}
+
+.gallery-image img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  display: block;
+}
+
+.gallery-image:hover,
+.gallery-image:focus {
+  transform: translateY(-5px);
+  z-index: 50;
+}
+
+.gallery-image.zoomed {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  margin-left: 0;
+  transform: translate(-50%, -50%) scale(7);
+  z-index: 9999;
+  transition: transform 0.4s ease, top 0s, left 0s;
+}
+
+.gallery-image.zoomed img {
+  border-color: #fff;
+}
+
+.gallery-images-empty {
+  text-align: center;
+  color: #666;
+  padding: 20px;
+}
+
+/* --- Styles for Clickable "Show More/Less" Block --- */
+.gallery-toggle-clickable-area {
+  position: absolute;
+  bottom: 0;
+  /* Position at the very bottom of .gallery-horizontal-list */
+  left: 0;
+  right: 0;
+  height: 45px;
+  /* Height of the clickable area/gradient */
+
+  display: flex;
+  align-items: center;
+  /* Vertically center the icon */
+  justify-content: center;
+  /* Horizontally center the icon */
+
+  /* White gradient: more opaque at bottom, fades to transparent towards top */
+  /* This allows content above to show through the top part of the gradient */
+  background: linear-gradient(to top,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 255, 255, 0.9) 30%,
+      rgba(255, 255, 255, 0.7) 60%,
+      rgba(255, 255, 255, 0) 100%);
+  cursor: pointer;
+  z-index: 10;
+  /* Ensure it's above the images if they flow under */
+  /* border-top: 1px solid rgba(0, 0, 0, 0.05); */
+  /* Optional subtle top border */
+  transition: background-color 0.2s ease;
+  /* For potential hover effects */
+}
+
+.gallery-toggle-clickable-area:hover,
+.gallery-toggle-clickable-area:focus {
+  /* Slightly change background on hover/focus if desired */
+  /* Example: make it slightly more opaque or change tint */
+  /* background: linear-gradient(to top,
+              rgba(255,255,255,1) 0%,
+              rgba(255,255,255,0.95) 30%,
+              rgba(255,255,255,0.75) 60%,
+              rgba(255,255,255,0) 100%); */
+  outline: none;
+  /* Or your preferred focus style */
+}
+
+.gallery-toggle-clickable-area i.bi {
+  /* Targeting Bootstrap icons */
+  font-size: 24px;
+  /* Adjust icon size */
+  color: #333;
+  /* Icon color, ensure good contrast */
+  /* Optional: add a subtle shadow to the icon to lift it off the gradient */
+  /* text-shadow: 0px 1px 2px rgba(0,0,0,0.1); */
 }

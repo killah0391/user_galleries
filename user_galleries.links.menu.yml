@@ -1,0 +1,6 @@
+user_galleries.admin_collection:
+  title: 'User Galleries'
+  description: 'View and manage all user galleries.'
+  route_name: 'entity.gallery.collection'
+  parent: 'system.admin_structure' # Places it under /admin/structure
+  weight: 100

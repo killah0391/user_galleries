@@ -1,0 +1,42 @@
+{#
+/**
+ * @file
+ * Theme for a private gallery block (Horizontal Overlapping Layout).
+ */
+#}
+{%
+  set classes = [
+    'block',
+    'block-user-galleries',
+    'block-private-gallery-block',
+    'user-gallery-block-custom-wrapper',
+  ]|merge(attributes.class|default([]))
+%}
+<div{{attributes.addClass(classes)}}>
+	{{ title_prefix }}
+	{% if title_text or manage_icon_link %}
+		<h2 class="block-title">
+			{{ title_text }}
+			{% if manage_icon_link %}
+				{{ manage_icon_link }}
+			{% endif %}
+		</h2>
+	{% endif %}
+	{{ title_suffix }}
+
+	{% block content %}
+		{% if has_images %}
+<div class="gallery-horizontal-list bg-dark rounded-2 justify-content-center">
+
+				{% for image in images %}
+					{% set label_text = 'View image ' ~ loop.index %}
+					<div class="gallery-image" tabindex="0" role="button" aria-label="{{ label_text }}">
+						<img src="{{ file_url(image.uri) }}" alt="{{ image.alt }}" loading="lazy">
+					</div>
+				{% endfor %}
+			</div>
+		{% else %}
+			<p class="gallery-images-empty">{{ 'No images in this gallery yet.'|t }}</p>
+		{% endif %}
+	{% endblock %}
+</div>

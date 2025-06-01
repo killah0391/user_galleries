@@ -1,7 +1,53 @@
 <?php
 
+/**
+ * @file
+ * Contains user_galleries.module.
+ */
+
 use Drupal\user\UserInterface;
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\Core\Session\AccountInterface;
 use Drupal\user_galleries\Entity\Gallery;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\file\FileInterface;
+use Drupal\Component\Utility\Crypt;
+use Drupal\Core\File\FileSystemInterface;
+
+/**
+ * Implements hook_theme().
+ */
+function user_galleries_theme($existing, $type, $theme, $path)
+{
+  return [
+    'public_gallery_block' => [ // Theme hook name
+      'variables' => [
+        'images' => [],
+        'title_text' => NULL,
+        'manage_icon_link' => NULL,
+        'user' => NULL, // Though not used in your provided Twig, it's defined
+        'has_images' => FALSE,
+        'attributes' => [], // To pass attributes to the outer div in Twig
+      ],
+      'template' => 'public-gallery-block', // Drupal converts public_gallery_block to public-gallery-block.html.twig
+      'path' => $path . '/templates', // Assumes templates are in module_folder/templates
+    ],
+    'private_gallery_block' => [ // Theme hook name
+      'variables' => [
+        'images' => [],
+        'title_text' => NULL,
+        'manage_icon_link' => NULL,
+        'user' => NULL,
+        'has_images' => FALSE,
+        'attributes' => [],
+      ],
+      'template' => 'private-gallery-block', // Drupal converts to private-gallery-block.html.twig
+      'path' => $path . '/templates',
+    ],
+  ];
+}
 
 /**
  * Implements hook_user_insert().
@@ -23,4 +69,196 @@ function user_galleries_user_insert(UserInterface $account)
     'gallery_type' => 'private',
   ]);
   $private_gallery->save();
+}
+
+// /**
+//  * Implements hook_entity_access().
+//  */
+// function user_galleries_entity_access(EntityInterface $entity, $operation, AccountInterface $account)
+// {
+//   if ($entity->getEntityTypeId() === 'private_gallery') {
+//     $owner_id = $entity->getOwnerId();
+
+//     // Always allow owner and administrators.
+//     if ($account->id() == $owner_id || $account->hasPermission('administer site configuration')) {
+//       return AccessResult::allowed()->cachePerUser();
+//     }
+
+//     // Check 'view' operation.
+//     if ($operation === 'view') {
+//       $allowed_users_items = $entity->get('allowed_users')->getValue();
+//       $allowed_user_ids = array_column($allowed_users_items, 'target_id');
+
+//       if (in_array($account->id(), $allowed_user_ids)) {
+//         return AccessResult::allowed()->cachePerUser();
+//       }
+//     }
+
+//     // By default, forbid access for others.
+//     return AccessResult::forbidden()->cachePerUser();
+//   }
+
+//   // For public gallery, allow view access generally.
+//   // Add specific checks for edit/delete if needed, but we use modals.
+//   if ($entity->getEntityTypeId() === 'public_gallery' && $operation === 'view') {
+//     return AccessResult::allowed()->cachePerPermissions();
+//   }
+
+
+//   // For other entities or operations, don't interfere.
+//   return AccessResult::neutral();
+// }
+
+/**
+ * Implements hook_file_download().
+ *
+ * Grants access to private gallery images for the gallery owner and users
+ * listed in the 'allowed_users' field of private galleries.
+ */
+function user_galleries_file_download($uri)
+{
+  $current_user = \Drupal::currentUser();
+  $entity_type_manager = \Drupal::entityTypeManager();
+
+  // Optional: Uncomment this block if you want UID 1 to ALWAYS have access.
+
+  if ($current_user->hasPermission('view any private galleries')) {
+    return ['Cache-Control' => 'private']; // Superuser bypass
+  }
+
+
+  if (strpos($uri, 'private://galleries/') === 0) {
+
+
+    /** @var \Drupal\file\FileInterface[] $files */
+    $files = $entity_type_manager->getStorage('file')->loadByProperties(['uri' => $uri]);
+
+    if (empty($files)) {
+
+      return NULL;
+    }
+    $file = reset($files);
+
+
+    /** @var \Drupal\user_galleries\Entity\Gallery[] $galleries */
+    $galleries = $entity_type_manager->getStorage('gallery')
+      ->loadByProperties([
+        'images.target_id' => $file->id(),
+        'gallery_type' => 'private',
+      ]);
+
+    if (empty($galleries)) {
+
+      return NULL;
+    }
+
+
+
+    foreach ($galleries as $gallery) {
+      $gallery_id = $gallery->id();
+      $owner_id = $gallery->getOwnerId();
+
+
+      // 1. Check owner.
+      if ($owner_id === $current_user->id()) {
+
+        return ['Cache-Control' => 'private'];
+      }
+
+      // 2. Check allowed_users.
+      $allowed_users_ids = [];
+      $allowed_users_field = $gallery->get('allowed_users');
+      foreach ($allowed_users_field as $allowed_user_item) {
+        $allowed_users_ids[] = $allowed_user_item->target_id;
+        if ($allowed_user_item->target_id == $current_user->id()) {
+
+          return ['Cache-Control' => 'private'];
+        }
+      }
+
+    }
+
+
+    return NULL; // Deny if no conditions met after checking all relevant galleries.
+  } else {
+    // $logger->debug('URI @uri is NOT within private gallery path. Skipping.', ['@uri' => $uri]); // Can be noisy
+  }
+
+  return NULL; // Not a file URI this hook is concerned with.
+}
+
+/**
+ * Implements hook_file_presave().
+ *
+ * Renames newly uploaded gallery files to a random hash when they are
+ * being made permanent.
+ */
+function user_galleries_file_presave(FileInterface $file)
+{
+  // Check if the file was temporary and is now being made permanent.
+  // This typically happens on the first save after $file->setPermanent() is called.
+  // We also add a temporary property to the file object to prevent reprocessing
+  // in case of multiple saves within the same request for any reason.
+  if (!isset($file->user_galleries_rename_processed) && $file->original && $file->original->isTemporary() && !$file->isTemporary()) {
+    // Mark this file entity as processed for renaming in this request.
+    $file->user_galleries_rename_processed = TRUE;
+
+    $current_uri = $file->getFileUri();
+    /** @var \Drupal\Core\File\FileSystemInterface $file_system */
+    $file_system = \Drupal::service('file_system');
+    $logger = \Drupal::logger('user_galleries');
+
+    // Determine the directory from the URI.
+    // Example URI from your form: "private://galleries/USER_ID/filename.jpg"
+    // or "public://galleries/USER_ID/filename.jpg"
+    //
+    $directory_path = $file_system->dirname($current_uri);
+
+    // Check if the file is in one of the expected user gallery upload paths.
+    // Pattern matches "public://galleries/123" or "private://galleries/456".
+    $path_pattern = '#^(public|private)://galleries/\d+$#';
+    if (preg_match($path_pattern, $directory_path)) {
+      $logger->debug('File @uri in user_galleries path identified for renaming during permanent save.', ['@uri' => $current_uri]);
+
+      $original_filename = $file->getFilename();
+      $extension = strtolower(pathinfo($original_filename, PATHINFO_EXTENSION));
+
+      // Generate a URL-safe random hash for the filename base.
+      // Crypt::randomBytesBase64(16) generates ~22 chars, then we make it alphanumeric.
+      $hash_base = Crypt::randomBytesBase64(16);
+      $hash_base = preg_replace('/[^A-Za-z0-9]/', '', $hash_base); // Keep only alphanumeric
+      if (strlen($hash_base) > 20) { // Cap length if needed, though usually not necessary after preg_replace
+        $hash_base = substr($hash_base, 0, 20);
+      }
+      if (empty($hash_base)) { // Fallback if somehow preg_replace removes everything
+        $hash_base = substr(md5(uniqid(mt_rand(), TRUE)), 0, 20);
+      }
+
+
+      $prospective_new_filename = $hash_base . ($extension ? '.' . $extension : '');
+
+      // Ensure the filename is unique in the destination directory by letting Drupal
+      // append _0, _1, etc., if a hash collision (extremely unlikely) occurs or
+      // if file already exists by that hash for some reason.
+      $destination_uri_for_uniqueness_check = $directory_path . '/' . $prospective_new_filename;
+      $final_new_filename = $file_system->basename($file_system->getDestinationFilename($destination_uri_for_uniqueness_check, FileSystemInterface::EXISTS_RENAME));
+
+      if ($final_new_filename && $final_new_filename !== $original_filename) {
+        $file->setFilename($final_new_filename);
+        // Important: When a temporary file's filename is changed before its first permanent save,
+        // Drupal's file system API, when moving the file from temporary location or finalizing it
+        // from the #upload_location, should use this new filename to construct the final URI.
+        // The actual physical file renaming/moving is handled by Drupal when it makes the file permanent
+        // based on the settings of the 'managed_file' element and file system configuration.
+        // We are essentially telling Drupal what the filename *should be* when it does that.
+        $logger->info('Scheduled rename for gallery file: original "@orig_name", new "@new_name" (URI was @uri). Final URI will be determined on save.', [
+          '@orig_name' => $original_filename,
+          '@new_name' => $final_new_filename,
+          '@uri' => $current_uri,
+        ]);
+      } elseif (!$final_new_filename) {
+        $logger->error('Could not determine a unique new filename for @uri during presave.', ['@uri' => $current_uri]);
+      }
+    }
+  }
 }

@@ -33,10 +33,14 @@ use Drupal\user\EntityOwnerTrait;
  * "edit" = "Drupal\user_galleries\Form\GalleryManagementForm",
  * "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",
  * },
+ * "list_builder" = "Drupal\user_galleries\GalleryListBuilder",
  * },
  * links = {
- * "edit-form" = "/user/gallery/manage/{gallery_type}",
+ * "edit-form" = "/admin/structure/user_galleries/gallery/{gallery}/edit",
+ * "delete-form" = "/admin/structure/user_galleries/gallery/{gallery}/delete",
+ * "collection" = "/admin/structure/user_galleries",
  * },
+ * admin_permission = "administer user galleries",
  * )
  */
 class Gallery extends ContentEntityBase implements ContentEntityInterface, EntityOwnerInterface

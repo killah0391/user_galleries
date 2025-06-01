@@ -1,0 +1,48 @@
+{#
+/**
+ * @file
+ * Theme for a public gallery block (Horizontal Overlapping Layout).
+ */
+#}
+{%
+  set classes = [
+    'block',
+    'block-user-galleries',
+    'block-public-gallery-block',
+    'user-gallery-block-custom-wrapper',
+  ]|merge(attributes.class|default([]))
+%}
+{# attributes variable is passed from PHP, containing classes passed via '#attributes' #}
+<div{{ attributes.addClass(classes) }}>
+  {{ title_prefix }}
+  {# title_attributes are usually for the <hX> tag if using block's label property directly #}
+  {# We'll use a simple h2 for title_text as per your snippet #}
+  {% if title_text or manage_icon_link %}
+    <h2 class="block-title"> {# You might want to add title_attributes here if needed #}
+      {{ title_text }}
+      {% if manage_icon_link %}
+        {# manage_icon_link is a render array for a link, Drupal renders it #}
+        {{ manage_icon_link }}
+      {% endif %}
+    </h2>
+  {% endif %}
+  {{ title_suffix }}
+
+  {% block content %}
+    {% if has_images %}
+      {# Wrapper for the horizontal list, using classes from your CSS #}
+      <div class="gallery-horizontal-list bg-dark rounded-2 justify-content-center">
+        {% for image in images %}
+          {# Ensure label_text is safe. 'View image' and loop.index are safe. #}
+          {% set label_text = 'View image ' ~ loop.index %}
+          <div class="gallery-image" tabindex="0" role="button" aria-label="{{ label_text }}">
+            {# file_url() generates URL from URI. image.alt is passed from PHP. #}
+            <img src="{{ file_url(image.uri) }}" alt="{{ image.alt }}" loading="lazy">
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="gallery-images-empty">{{ 'No images in this gallery yet.'|t }}</p>
+    {% endif %}
+  {% endblock %}
+</div>
