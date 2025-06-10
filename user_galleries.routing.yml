@@ -2,18 +2,20 @@ user_galleries.manage_public:
   path: '/user/gallery/manage/public'
   defaults:
     _form: '\Drupal\user_galleries\Form\GalleryManagementForm'
-    _title: 'Manage Public Gallery'
+    _title_callback: '\Drupal\user_galleries\Form\GalleryManagementForm::getTitle'
     gallery_type: 'public'
   requirements:
+    type: public
     _user_is_logged_in: 'TRUE'
 
 user_galleries.manage_private:
   path: '/user/gallery/manage/private'
   defaults:
     _form: '\Drupal\user_galleries\Form\GalleryManagementForm'
-    _title: 'Manage Private Gallery'
+    _title_callback: '\Drupal\user_galleries\Form\GalleryManagementForm::getTitle'
     gallery_type: 'private'
   requirements:
+    type: private
     _user_is_logged_in: 'TRUE'
 
 # New Admin Routes
@@ -67,3 +69,11 @@ entity.gallery.delete_form:
     parameters:
       gallery:
         type: entity:gallery
+
+# user_galleries.admin_cleanup_form:
+#   path: '/admin/structure/user_galleries/cleanup'
+#   defaults:
+#     _form: '\Drupal\user_galleries\Form\GalleryCleanupForm'
+#     _title: 'Cleanup Orphaned Gallery Images'
+#   requirements:
+#     _permission: 'administer user galleries'

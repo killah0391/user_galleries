@@ -11,6 +11,7 @@ use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Url;
 use Drupal\user\UserInterface;
 use Drupal\user\Entity\User;
+use Drupal\match_abuse\Service\BlockCheckerInterface;
 use Drupal\Core\Render\Markup;
 
 /**
@@ -27,13 +28,20 @@ class PublicGalleryBlock extends BlockBase implements ContainerFactoryPluginInte
   protected $currentUser;
   protected $entityTypeManager;
   protected $routeMatch;
+  /**
+   * The match abuse block checker service.
+   *
+   * @var \Drupal\match_abuse\Service\BlockCheckerInterface
+   */
+  protected $blockChecker;
 
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, AccountInterface $current_user, EntityTypeManagerInterface $entity_type_manager, RouteMatchInterface $route_match)
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, AccountInterface $current_user, EntityTypeManagerInterface $entity_type_manager, RouteMatchInterface $route_match, BlockCheckerInterface $block_checker)
   {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->currentUser = $current_user;
     $this->entityTypeManager = $entity_type_manager;
     $this->routeMatch = $route_match;
+    $this->blockChecker = $block_checker;
   }
 
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition)
@@ -44,7 +52,8 @@ class PublicGalleryBlock extends BlockBase implements ContainerFactoryPluginInte
       $plugin_definition,
       $container->get('current_user'),
       $container->get('entity_type.manager'),
-      $container->get('current_route_match')
+      $container->get('current_route_match'),
+      $container->get('match_abuse.block_checker')
     );
   }
 
@@ -67,6 +76,15 @@ class PublicGalleryBlock extends BlockBase implements ContainerFactoryPluginInte
   {
     $profile_user = $this->getProfileUser();
     if (!$profile_user) {
+      return [];
+    }
+
+    // Explicitly hint for static analysis that $profile_user (UserInterface)
+    // is being used as an AccountInterface for the block check.
+    /** @var \Drupal\Core\Session\AccountInterface $profile_user_as_account */
+    $profile_user_as_account = $profile_user;
+    // If current user and profile user have a block active, hide the block.
+    if ($this->blockChecker->isBlockActive($this->currentUser, $profile_user_as_account)) {
       return [];
     }
 
@@ -128,7 +146,6 @@ class PublicGalleryBlock extends BlockBase implements ContainerFactoryPluginInte
         }
       }
     }
-
     $has_images = !empty($images_data);
     if (!$has_images) {
       if ($this->currentUser->id() === $profile_user->id()) {
@@ -165,7 +182,7 @@ class PublicGalleryBlock extends BlockBase implements ContainerFactoryPluginInte
    */
   public function getCacheContexts()
   {
-    return parent::getCacheContexts() + ['user', 'url.path', 'user.permissions']; //
+    return parent::getCacheContexts() + ['user', 'url.path', 'user.permissions'];
   }
 
   /**
@@ -175,6 +192,7 @@ class PublicGalleryBlock extends BlockBase implements ContainerFactoryPluginInte
   {
     $tags = parent::getCacheTags();
     // Add image style a general cache tag for invalidation if styles change.
+    // The style name 'wide' was used in the build method.
     $tags[] = 'config:image.style.thumbnail'; // Or the specific style you use for list_src
 
     if ($profile_user = $this->getProfileUser()) {
@@ -186,6 +204,7 @@ class PublicGalleryBlock extends BlockBase implements ContainerFactoryPluginInte
       foreach ($galleries as $gallery) {
         $tags = array_merge($tags, $gallery->getCacheTags());
       }
+      $tags[] = 'match_abuse_block_list';
     }
     return $tags;
   }

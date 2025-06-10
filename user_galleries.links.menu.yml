@@ -4,3 +4,9 @@ user_galleries.admin_collection:
   route_name: 'entity.gallery.collection'
   parent: 'system.admin_structure' # Places it under /admin/structure
   weight: 100
+# user_galleries.admin_cleanup:
+#   title: 'Cleanup Orphaned Images'
+#   description: 'Scan and remove references to deleted images from galleries.'
+#   route_name: 'user_galleries.admin_cleanup_form'
+#   parent: 'user_galleries.admin_collection' # Place it under the main gallery admin page
+#   weight: 10

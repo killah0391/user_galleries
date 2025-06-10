@@ -7,4 +7,5 @@ dependencies:
   - drupal:file
   - drupal:image
   - drupal:user
+  - match_abuse:match_abuse
   # - custom_bootstrap_toasts:custom_bootstrap_toasts
