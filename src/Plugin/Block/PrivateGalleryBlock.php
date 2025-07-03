@@ -146,21 +146,25 @@ class PrivateGalleryBlock extends BlockBase implements ContainerFactoryPluginInt
       if (!$image_field_items->isEmpty()) {
         $image_style_storage = $this->entityTypeManager->getStorage('image_style');
         $file_url_generator = \Drupal::service('file_url_generator');
-        $list_thumbnail_style = $image_style_storage->load('wide'); // Ensure 'thumbnail' style exists
 
         foreach ($image_field_items as $item) {
           if ($file = $item->entity) {
             $image_uri = $file->getFileUri();
-            $list_image_url = $list_thumbnail_style ?
-              $file_url_generator->generateString($list_thumbnail_style->buildUrl($image_uri)) :
-              $file_url_generator->generateString($image_uri);
             $original_image_url = $file_url_generator->generateAbsoluteString($image_uri);
 
             $images_data[] = [
-              'uri' => $list_image_url,
-              'alt' => $item->alt ?? $file->getFilename(),
-              'title_attr' => $item->title ?? '',
-              'original_src' => $original_image_url,
+              'styled_image' => [
+                '#theme' => 'responsive_image',
+                '#responsive_image_style_id' => 'gallery_thumbnail',
+                '#uri' => $image_uri,
+                '#attributes' => [
+                  'class' => ['js-zoomable-image'],
+                  'alt' => $item->alt ?? $file->getFilename(),
+                  'title' => $item->title ?? '',
+                  'loading' => 'lazy',
+                  'data-zoom-src' => $original_image_url,
+                ],
+              ],
             ];
           }
         }
@@ -203,6 +207,7 @@ class PrivateGalleryBlock extends BlockBase implements ContainerFactoryPluginInt
         'library' => [
           'user_galleries/global-styling',
           'user_galleries/gallery-management-js',
+          'match_chat/match_chat_image_zoom',
         ],
       ],
     ];
@@ -222,8 +227,8 @@ class PrivateGalleryBlock extends BlockBase implements ContainerFactoryPluginInt
   public function getCacheTags()
   {
     $tags = parent::getCacheTags();
-    // The style name 'wide' was used in the build method.
-    $tags[] = 'config:image.style.wide';
+    // The responsive style 'gallery_thumbnail' is now used.
+    $tags[] = 'config:responsive_image.style.gallery_thumbnail';
     if ($profile_user = $this->getProfileUser()) {
       $tags[] = 'user:' . $profile_user->id();
       // For private galleries, cache tags need to be very carefully considered
@@ -243,5 +248,4 @@ class PrivateGalleryBlock extends BlockBase implements ContainerFactoryPluginInt
     }
     return $tags;
   }
-
 }

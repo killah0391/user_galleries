@@ -10,3 +10,11 @@ user_galleries.admin_collection:
 #   route_name: 'user_galleries.admin_cleanup_form'
 #   parent: 'user_galleries.admin_collection' # Place it under the main gallery admin page
 #   weight: 10
+user_galleries.manage_private:
+  title: 'Manage private gallery'
+  menu_name: account
+  class: 'Drupal\user_galleries\Plugin\Menu\ManagePrivateGalleryMenuLink'
+user_galleries.manage_public:
+  title: 'Manage public gallery'
+  menu_name: account
+  class: 'Drupal\user_galleries\Plugin\Menu\ManagePublicGalleryMenuLink'

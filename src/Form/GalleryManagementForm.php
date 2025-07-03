@@ -17,6 +17,7 @@ use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\match_abuse\Service\BlockCheckerInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
@@ -29,13 +30,20 @@ class GalleryManagementForm extends FormBase
   protected $entityTypeManager;
   protected $galleryStorage;
   protected $renderer;
+  /**
+   * The block checker service.
+   *
+   * @var \Drupal\match_abuse\Service\BlockCheckerInterface
+   */
+  protected $blockChecker;
 
-  public function __construct(AccountInterface $current_user, EntityTypeManagerInterface $entity_type_manager, RendererInterface $renderer)
+  public function __construct(AccountInterface $current_user, EntityTypeManagerInterface $entity_type_manager, RendererInterface $renderer, BlockCheckerInterface $block_checker)
   {
     $this->currentUser = $current_user;
     $this->entityTypeManager = $entity_type_manager;
     $this->galleryStorage = $this->entityTypeManager->getStorage('gallery');
     $this->renderer = $renderer;
+    $this->blockChecker = $block_checker;
     $this->setMessenger(\Drupal::messenger());
   }
 
@@ -44,7 +52,8 @@ class GalleryManagementForm extends FormBase
     return new static(
       $container->get('current_user'),
       $container->get('entity_type.manager'),
-      $container->get('renderer')
+      $container->get('renderer'),
+      $container->get('match_abuse.block_checker')
     );
   }
 
@@ -120,8 +129,14 @@ class GalleryManagementForm extends FormBase
       '#title' => $this->t('Select images'),
       '#title_display' => 'invisible', // Title provided by details wrapper
       '#upload_location' => ($gallery_type === 'private') ? 'private://galleries/' . $target_user->id() : 'public://galleries/' . $target_user->id(),
-      '#multiple' => TRUE, '#upload_validators' => ['file_validate_extensions' => ['png jpg jpeg gif']],
-      '#description' => $this->t('Allowed extensions: png, jpg, jpeg, gif. Click "Save Gallery Changes" after selecting files.')];
+      '#multiple' => TRUE,
+      '#upload_validators' => ['file_validate_extensions' => ['png jpg jpeg gif']],
+      '#description' => $this->t('Allowed extensions: png, jpg, jpeg, gif. Click "Save Gallery Changes" after selecting files.'),
+      '#progress' => [
+        'type' => 'throbber',
+        'message' => $this->t('Uploading image...'),
+      ],
+    ];
 
     if ($gallery_type === 'private') {
       $form['allowed_users_wrapper'] = [
@@ -146,25 +161,45 @@ class GalleryManagementForm extends FormBase
 
       $user_options = [];
       foreach ($user_entities as $user_entity) {
+        // Do not include users that the gallery owner ($target_user) has blocked.
+        if ($this->blockChecker->isUserBlockedBy($user_entity, $target_user)) {
+          continue;
+        }
+        // Do not include users who have blocked the gallery owner ($target_user).
+        if ($this->blockChecker->isUserBlockedBy($target_user, $user_entity)) {
+          continue;
+        }
+
         $user_picture = $user_entity->get('user_picture')->entity;
-        if($user_picture) {
+        if ($user_picture) {
           $picture_url = \Drupal::service('file_url_generator')->generateAbsoluteString($user_picture->getFileUri());
         } else {
           $config = \Drupal::config('field.field.user.user.user_picture');
           $default_image = $config->get('settings.default_image');
-          $file = \Drupal::service('entity.repository')
+          $file_entity_default = \Drupal::service('entity.repository')
             ->loadEntityByUuid('file', $default_image['uuid']);
-            $picture_uri = $file;
-          $picture_url = \Drupal::service('file_url_generator')->generateAbsoluteString($picture_uri->getFileUri());
+          if ($file_entity_default) {
+            $picture_url = \Drupal::service('file_url_generator')->generateAbsoluteString($file_entity_default->getFileUri());
+          } else {
+            // Fallback if default image UUID is broken or file missing
+            $picture_url = \Drupal::service('file_url_generator')->generateAbsoluteString(\Drupal::config('user.settings')->get('anonymous_picture.path'));
+          }
         }
-        $user_options[$user_entity->id()] = Markup::create('<img class="rounded-5" style="width:30px;height:30px;" src="'. $picture_url . '"/> ' . $user_entity->getDisplayName());
+        $user_options[$user_entity->id()] = Markup::create('<img class="rounded-5" style="width:30px;height:30px;" src="' . $picture_url . '"/> ' . $user_entity->getDisplayName());
       }
       asort($user_options);
 
       $default_allowed_user_ids = [];
       if ($gallery && !$gallery->get('allowed_users')->isEmpty()) {
         foreach ($gallery->get('allowed_users')->referencedEntities() as $allowed_user) {
-          $default_allowed_user_ids[] = $allowed_user->id();
+          // Check if gallery owner ($target_user) has blocked this $allowed_user.
+          $owner_blocked_allowed_user = $this->blockChecker->isUserBlockedBy($allowed_user, $target_user);
+          // Check if this $allowed_user has blocked the gallery owner ($target_user).
+          $allowed_user_blocked_owner = $this->blockChecker->isUserBlockedBy($target_user, $allowed_user);
+
+          if (!$owner_blocked_allowed_user && !$allowed_user_blocked_owner) {
+            $default_allowed_user_ids[] = $allowed_user->id();
+          }
         }
       }
       $form['allowed_users_wrapper']['allowed_users'] = [

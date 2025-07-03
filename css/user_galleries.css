@@ -1,11 +1,11 @@
 /* Original styles from user_galleries.css */
-.ajax-progress .throbber {
+/* .ajax-progress .throbber {
   display: none;
 }
 
 .ajax-progress .message {
   display: none;
-}
+} */
 
 .block-title-with-icon-manage-link {
   display: flex;
@@ -36,23 +36,20 @@
   color: #212529;
 }
 
-/* --- Gallery List Styles for "Show First Row" & Expand/Collapse --- */
 .gallery-horizontal-list {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  height: 110px;
-  /* Example: Adjust to fit one row + margins + padding */
+  /* Set a fixed height for one row to be visible initially */
+  height: 110px; /* Adjust this to fit one row of your images + margins */
   overflow: hidden;
   padding: 10px;
-  /* Increased padding-bottom to make space for the overlaid toggle area */
+  /* Add extra padding at the bottom to make space for the "Show More" overlay */
   padding-bottom: 50px;
-  /* e.g., if toggle area is 40px high + 10px space */
   list-style: none;
   margin: 0;
   width: 100%;
   position: relative;
-  /* Crucial for positioning the toggle area inside */
   transition: height 0.35s ease-in-out;
 }
 
@@ -61,15 +58,44 @@
   overflow: visible;
 }
 
+/* --- Styles for Clickable "Show More/Less" Block --- */
+.gallery-toggle-clickable-area {
+  position: absolute;
+  border-radius: 0 0 5px 5px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Gradient from solid to transparent to fade out the images */
+  background: linear-gradient(to top,
+    indianred 0%,
+    indianred 30%,
+    indianred 60%,
+    rgba(205, 92, 92, 0) 100%);
+  cursor: pointer;
+  z-index: 10;
+  transition: background-color 0.2s ease;
+}
+
+.gallery-toggle-clickable-area:hover,
+.gallery-toggle-clickable-area:focus {
+  outline: none;
+}
+
+.gallery-toggle-clickable-area i.bi {
+  font-size: 24px;
+  color: #fff;
+}
+
 /* --- Styles for Individual Gallery Images --- */
 .gallery-image {
   width: 80px;
   height: 80px;
-  position: relative;
   margin: 5px;
-  cursor: pointer;
-  z-index: 1;
-  transition: transform 0.4s ease, z-index 0s 0.4s;
+  transition: transform 0.2s ease;
 }
 
 .gallery-image img {
@@ -85,82 +111,12 @@
 .gallery-image:hover,
 .gallery-image:focus {
   transform: translateY(-5px);
-  z-index: 50;
-}
-
-.gallery-image.zoomed {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  margin-left: 0;
-  transform: translate(-50%, -50%) scale(7);
-  z-index: 9999;
-  transition: transform 0.4s ease, top 0s, left 0s;
-}
-
-.gallery-image.zoomed img {
-  border-color: #fff;
 }
 
 .gallery-images-empty {
   text-align: center;
   color: #666;
   padding: 20px;
-}
-
-/* --- Styles for Clickable "Show More/Less" Block --- */
-.gallery-toggle-clickable-area {
-  position: absolute;
-  bottom: 0;
-  /* Position at the very bottom of .gallery-horizontal-list */
-  left: 0;
-  right: 0;
-  height: 45px;
-  /* Height of the clickable area/gradient */
-
-  display: flex;
-  align-items: center;
-  /* Vertically center the icon */
-  justify-content: center;
-  /* Horizontally center the icon */
-
-  /* White gradient: more opaque at bottom, fades to transparent towards top */
-  /* This allows content above to show through the top part of the gradient */
-  background: linear-gradient(to top,
-      rgba(255, 255, 255, 0.95) 0%,
-      rgba(255, 255, 255, 0.9) 30%,
-      rgba(255, 255, 255, 0.7) 60%,
-      rgba(255, 255, 255, 0) 100%);
-  cursor: pointer;
-  z-index: 10;
-  /* Ensure it's above the images if they flow under */
-  /* border-top: 1px solid rgba(0, 0, 0, 0.05); */
-  /* Optional subtle top border */
-  transition: background-color 0.2s ease;
-  /* For potential hover effects */
-}
-
-.gallery-toggle-clickable-area:hover,
-.gallery-toggle-clickable-area:focus {
-  /* Slightly change background on hover/focus if desired */
-  /* Example: make it slightly more opaque or change tint */
-  /* background: linear-gradient(to top,
-              rgba(255,255,255,1) 0%,
-              rgba(255,255,255,0.95) 30%,
-              rgba(255,255,255,0.75) 60%,
-              rgba(255,255,255,0) 100%); */
-  outline: none;
-  /* Or your preferred focus style */
-}
-
-.gallery-toggle-clickable-area i.bi {
-  /* Targeting Bootstrap icons */
-  font-size: 24px;
-  /* Adjust icon size */
-  color: #333;
-  /* Icon color, ensure good contrast */
-  /* Optional: add a subtle shadow to the icon to lift it off the gradient */
-  /* text-shadow: 0px 1px 2px rgba(0,0,0,0.1); */
 }
 /* Gallery Management Form - Image Grid Cards */
 /* .form-container-gallery .card .card-img-top {
@@ -189,4 +145,9 @@
 
  #form-container-gallery .btn {
   width: 100%;
+ }
+ .chosen-container .chosen-results li img.chosen-option-img {
+   /* Styles are now mostly taken from the original img tag, but we can add fallbacks or overrides */
+   vertical-align: middle;
+   /* The margin-right is added inline in JS to ensure it's next to the dynamic style string */
  }

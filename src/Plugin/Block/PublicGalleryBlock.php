@@ -122,25 +122,25 @@ class PublicGalleryBlock extends BlockBase implements ContainerFactoryPluginInte
         /** @var \Drupal\Core\File\FileUrlGeneratorInterface $file_url_generator */
         $file_url_generator = \Drupal::service('file_url_generator');
 
-        // Use an image style for the list thumbnails (e.g., 'thumbnail' or a custom square one)
-        $list_thumbnail_style = $image_style_storage->load('wide'); // <<< Make sure 'thumbnail' or your chosen style exists
-
         foreach ($image_field_items as $item) {
           /** @var \Drupal\file\Entity\File $file */
           if ($file = $item->entity) {
             $image_uri = $file->getFileUri();
-
-            $list_image_url = $list_thumbnail_style ?
-              $file_url_generator->generateString($list_thumbnail_style->buildUrl($image_uri)) :
-              $file_url_generator->generateString($image_uri);
-
             $original_image_url = $file_url_generator->generateAbsoluteString($image_uri);
 
             $images_data[] = [
-              'uri' => $list_image_url, // For the <img> src in the list (already a URL)
-              'alt' => $item->alt ?? $file->getFilename(),
-              'title_attr' => $item->title ?? '',
-              'original_src' => $original_image_url, // For the "zoomed" image in JS
+              'styled_image' => [
+                '#theme' => 'responsive_image',
+                '#responsive_image_style_id' => 'gallery_thumbnail',
+                '#uri' => $image_uri,
+                '#attributes' => [
+                  'class' => ['js-zoomable-image'],
+                  'alt' => $item->alt ?? $file->getFilename(),
+                  'title' => $item->title ?? '',
+                  'loading' => 'lazy',
+                  'data-zoom-src' => $original_image_url,
+                ],
+              ],
             ];
           }
         }
@@ -172,6 +172,7 @@ class PublicGalleryBlock extends BlockBase implements ContainerFactoryPluginInte
         'library' => [
           'user_galleries/global-styling',    // Loads your user_galleries.css
           'user_galleries/gallery-management-js', // Loads your user_galleries.js
+          'match_chat/match_chat_image_zoom',
         ],
       ],
     ];
@@ -192,8 +193,8 @@ class PublicGalleryBlock extends BlockBase implements ContainerFactoryPluginInte
   {
     $tags = parent::getCacheTags();
     // Add image style a general cache tag for invalidation if styles change.
-    // The style name 'wide' was used in the build method.
-    $tags[] = 'config:image.style.thumbnail'; // Or the specific style you use for list_src
+    // The responsive style 'gallery_thumbnail' is now used.
+    $tags[] = 'config:responsive_image.style.gallery_thumbnail';
 
     if ($profile_user = $this->getProfileUser()) {
       $tags[] = 'user:' . $profile_user->id();

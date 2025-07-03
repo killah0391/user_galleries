@@ -1,45 +1,6 @@
 (function ($, Drupal, once) {
   'use strict';
 
-  Drupal.behaviors.userGalleriesZoom = {
-    attach: function (context, settings) {
-      const galleryImages = once('gallery-image-zoom', '.gallery-image', context);
-
-      galleryImages.forEach(function (element) {
-        $(element).on('click keydown', function (e) {
-          // Allow keyboard activation with Enter or Space
-          if (e.type === 'keydown' && (e.key !== 'Enter' && e.key !== ' ')) {
-            return;
-          }
-          e.stopPropagation();
-
-          const $this = $(this);
-          const isZoomed = $this.hasClass('zoomed');
-
-          $('.gallery-image.zoomed').not(this).removeClass('zoomed');
-
-          // Toggle 'zoomed' class on the clicked image
-          $this.toggleClass('zoomed', !isZoomed);
-
-          if (!isZoomed) {
-            $(document).one('click.galleryZoomOut', function (eClose) {
-              if (!$(eClose.target).closest('.gallery-image.zoomed').length) {
-                $this.removeClass('zoomed');
-              }
-            });
-            $(document).on('keydown.galleryZoomOutEsc', function (eEsc) {
-              if (eEsc.key === "Escape") {
-                $this.removeClass('zoomed');
-                $(document).off('.galleryZoomOutEsc .galleryZoomOut');
-              }
-            });
-          } else {
-            $(document).off('.galleryZoomOutEsc .galleryZoomOut');
-          }
-        });
-      });
-    }
-  };
   Drupal.behaviors.userGalleriesCollapse = {
     attach: function (context, settings) {
       const galleries = once('user-gallery-collapse', '.gallery-horizontal-list', context);
@@ -52,7 +13,7 @@
         const singleRowHeightString = $gallery.css('height');
         const singleRowHeightPx = parseInt(singleRowHeightString, 10);
 
-        if (galleryElement.scrollHeight > (singleRowHeightPx + 100)) {
+        if (galleryElement.scrollHeight > singleRowHeightPx) {
 
           const $toggleBlock = $('<div class="gallery-toggle-clickable-area" role="button" tabindex="0" aria-expanded="false"></div>')
             .attr('aria-controls', galleryId)

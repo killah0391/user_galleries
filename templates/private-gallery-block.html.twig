@@ -15,7 +15,7 @@
 <div{{attributes.addClass(classes)}}>
 	{{ title_prefix }}
 	{% if title_text or manage_icon_link %}
-		<h2 class="block-title">
+		<h2 class="mt-2">
 			{{ title_text }}
 			{% if manage_icon_link %}
 				{{ manage_icon_link }}
@@ -26,12 +26,13 @@
 
 	{% block content %}
 		{% if has_images %}
-<div class="gallery-horizontal-list bg-dark rounded-2 justify-content-center">
+			<div class="gallery-horizontal-list bg-danger rounded-2 justify-content-center">
 
 				{% for image in images %}
-					{% set label_text = 'View image ' ~ loop.index %}
-					<div class="gallery-image" tabindex="0" role="button" aria-label="{{ label_text }}">
-						<img src="{{ file_url(image.uri) }}" alt="{{ image.alt }}" loading="lazy">
+					<div
+						class="gallery-image">
+						{# This now renders a responsive image with srcset, sizes, etc. #}
+						{{ image.styled_image }}
 					</div>
 				{% endfor %}
 			</div>
